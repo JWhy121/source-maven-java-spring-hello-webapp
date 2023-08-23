@@ -1,15 +1,15 @@
 pipeline {
-  agent any
-
+  agent {
+    label "jenkins-node"
+  }
   triggers {
     pollSCM('* * * * *')
   }
-
   stages {
     stage('Checkout') {
       steps {
-        git branch: 'main', 
-        url: 'https://github.com/JWhy121/source-maven-java-spring-hello-webapp'
+        git branch: 'main',
+        url: 'https://github.com/c1t1d0s7/hello-myweb'
       }
     }
     stage('Build') {
