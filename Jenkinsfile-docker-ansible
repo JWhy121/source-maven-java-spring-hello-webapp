@@ -1,0 +1,61 @@
+pipeline {
+  agent none
+
+  stages {
+    stage('Checkout') {
+      agent any
+      steps {
+        git branch: 'main', url: 'https://github.com/c1t1d0s7/hello-myweb'
+      }
+    }
+    stage('Build') {
+      agent {
+        docker { image 'maven:3-openjdk-8' }
+      }
+      steps {
+        sh 'mvn clean package -DskipTests=true'
+      }
+    }
+    stage('Test') {
+      agent {
+        docker { image 'maven:3-openjdk-8' }
+      }
+      steps {
+        sh 'mvn test'
+      }
+    }
+    stage('Build Docker Image') {
+      agent any
+      steps {
+        sh 'docker image build -t myweb .'
+      }
+    }
+    stage('Tag Docker Image') {
+      agent any
+      steps {
+        sh 'docker image tag myweb c1t1d0s7/myweb:$BUILD_NUMBER'
+        sh 'docker image tag myweb c1t1d0s7/myweb:latest'
+      }
+    }
+    stage('Publish Docker Image') {
+      agent any
+      steps {
+        withDockerRegistry(credentialsId: 'docker-hub-token', url: 'https://index.docker.io/v1/') {
+          sh 'docker image push c1t1d0s7/myweb:$BUILD_NUMBER'
+          sh 'docker image push c1t1d0s7/myweb:latest'
+        }
+      }
+    }
+    stage('Run Docker Container') {
+      agent {
+        docker {
+          image 'c1t1d0s7/jenkins-ansible'
+          args '-u 0:0 -e DOCKER_HOST=tcp://192.168.56.104:2375'
+        }
+      }
+      steps {
+        ansiblePlaybook(playbook: 'docker-container-deploy.yaml')
+      }
+    }
+  }
+}
